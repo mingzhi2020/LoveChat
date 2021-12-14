@@ -39,9 +39,9 @@ Server::Server(){}
 
 Server::~Server(){}
 
-Server::Server(string address,int port){
+Server::Server(string IP,int port){
     this->server_info.sin_family =AF_INET;
-    this->server_info.sin_addr.s_addr = inet_addr(address.c_str());
+    this->server_info.sin_addr.s_addr = inet_addr(IP.c_str());
     this->server_info.sin_port = htons(port);
     print("服务器初始化!");
     bool ans =this->Create();
