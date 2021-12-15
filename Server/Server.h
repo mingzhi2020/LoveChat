@@ -23,10 +23,9 @@ struct user
 {
     int id;
     int fd;
+    int age;
     string name;
-    bool ismale;
-    double x;
-    double y;
+    string contro;
     int jointime;
 };
 
@@ -49,6 +48,7 @@ public:
     void Close();
     static void print(string s);
     static void server_thread(int fd);
+    static void Send_message(int fd,string msg);//向一个fd标识的客户端发送msg消息。
 };
 
 #endif

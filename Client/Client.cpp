@@ -1,85 +1,111 @@
-#include"Client.h"
-#include<csignal>
-
+#include <stdio.h>
+#include <pthread.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <signal.h>
+#include <iostream>
+#include <string>
 using namespace std;
 
-Client client("172.16.0.17", 54321);
-
-
-Client::Client(string IP,int port)
+bool match = false;
+int sockfd;
+char *IP = "42.193.188.120";
+short PORT = 54321;
+typedef struct sockaddr SA;
+//启动客户端，连接服务器
+void init()
 {
-    print("客户端开始启动!!!");
-    this->server_adress.sin_family=AF_INET;
-    this->server_adress.sin_addr.s_addr=inet_addr(IP.c_str());
-    this->server_adress.sin_port=htons(port);
-
-    bool ans =Create();
-    if (!ans)
+    printf("聊天室客户端开始启动\n");
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    struct sockaddr_in addr;
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(PORT);
+    addr.sin_addr.s_addr = inet_addr(IP);
+    if (connect(sockfd, (SA *)&addr, sizeof(addr)) == -1)
     {
-       print("客户端socket失败!!!");
-       exit(CREATE_ERROR);
+        perror("无法连接到服务器");
+        printf("客户端启动失败\n");
+        exit(-1);
     }
-    print("客户端创建socket成功!!!");
-    ans = Connet();
-    if (!ans)
+    printf("客户端启动成功\n");
+}
+//开始通信
+void *recv_thread(void *p)
+{ //收消息
+    while (1)
     {
-        print("客户端连接服务器失败!!!");
-        exit(CONNET_ERROR);
+        char buf[1000] = {0};
+        if (recv(sockfd, buf, sizeof(buf), 0) <= 0)
+        {
+            return NULL;
+        }
+        printf("%s\n", buf);
+        string t = buf;
+        if (strstr(t.c_str(),"MATCH SUCCESS")!=NULL&&!match)
+        {
+            cout << "匹配成功" << endl;
+            match = true;
+        }
+        if (!match)
+        {
+            cout<<"匹配中!!!请等待!!!"<<endl;
+        }
+        
+        
     }
-    print("客户端连接服务器成功!!!");
-    
-}
-Client::~Client(){}
-
-bool Client::Create(){
-    this->sockfd = socket(AF_INET,SOCK_STREAM,0);
-    return this->sockfd!=-1;
 }
 
-bool Client::Connet(){
-    return !(connect(this->sockfd,(sockaddr*)&this->server_adress,sizeof(this->server_adress)) ==-1);
+void start()
+{
+    //发送消息
+    //发消息之前，启动一个线程,用来接受服务器发送过来的消息
+    pthread_t pid;
+    pthread_create(&pid, 0, recv_thread, 0);
+    while (1)
+    {
+        char buf[100] = {};
+        scanf(" %s", buf); //接受用户输入
+        if (!match)
+        {
+            cout << "还没有匹配成功！" << endl;
+            continue;
+        }
+
+        send(sockfd, buf, strlen(buf), 0); //发给服务器
+    }
 }
 
-void Client::Close(){
-    close(this->sockfd);
+void sig_close(int)
+{
+    //关闭客户端的描述符
+    close(sockfd);
+    exit(0);
 }
-void Client::print(string s){
-    cout <<s <<endl;
-}
-
-void Client::login(string s){
-    const char *msg=s.c_str();
-    send(this->sockfd,msg,strlen(msg),0);
-}
-
-
-
-void sig_close(int){
-    client.Close();
-    exit(SUCCESS);
-}
-int main(){
-    //CTRL+C退出
-    signal(SIGINT,sig_close);
-
-    //登录报文 seq=@^@@&* login name age intro male
-    string msg="login";
+int main()
+{
+    string seq = "@^@@&*";
+    signal(SIGINT, sig_close); //关闭CTRL+C
+    string s = "login";
     string t;
-    int age;
-    cout <<"输入的姓名:";
-    cin>>t;
-    msg = msg +"@^@@&*"+t;
-    cout <<"输入年龄(0-99):";
-    cin>>age;
-    msg = msg +"@^@@&*"+to_string(age);
-    cout <<"介绍你自己:";
-    cin>>t;
-    msg =msg +"@^@@&*"+t;
-    cout <<"你是不是男生?(是/否)";
-    cin>>t;
-    msg =msg +"@^@@&*"+t;
-    cout <<msg <<endl;
-    client.login(msg);
-    
+    cout << "请输入您的昵称:";
+    cin >> t;
+    s = s + seq + t;
+    cout << "请输入您的年龄:";
+    cin >> t;
+    s = s + seq + t;
+    cout << "请输入您的简介:";
+    cin >> t;
+    s = s + seq + t;
+    cout << "您是男生吗?(是/否)";
+    cin >> t;
+    s = s + seq + t;
+    const char *msg = s.c_str();
+    init();                            //连接服务器
+    send(sockfd, msg, strlen(msg), 0); //将昵称发给服务器
+    start();                           //开始通信
     return 0;
 }
