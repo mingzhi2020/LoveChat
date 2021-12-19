@@ -28,7 +28,6 @@ void match()
     for (auto i : man)
     {
         int age1 = all[i].age;
-        bool flag = 0;
         for (auto j : woman)
         {
             if (is_match[j] == true)
@@ -36,7 +35,6 @@ void match()
                 continue;
             }
             int age2 = all[j].age;
-            bool flag = false;
             if (abs(age1 - age2) <= 5 || ((globaltime - all[i].jointime) >= 60 || (globaltime - all[j].jointime) >= 60))
             {
                 res01.insert(i);
@@ -45,10 +43,12 @@ void match()
                 is_match[j] = true;
                 map[i] = j;
                 map[j] = i;
-                flag = true;
             }
         }
+        if(is_match[i] == true)
+            continue;
     }
+    
     for (auto t : res01)
         man.erase(t);
     for (auto t : res02)
